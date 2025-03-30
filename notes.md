@@ -386,3 +386,153 @@ Loading development environment (Rails 8.0.2)
 3.2.0 :036 > 
 ```
 
+<br>
+<br>
+<br>
+<br>
+
+# Validations 
+- inside `app/models/article.rb`
+- validates is for attribute and there are multiple types of validations
+```ruby
+class Article < ApplicationRecord
+  validates :title, presence: true
+end
+```
+
+
+### different kinds of validations
+- `validates :title, presence: true`, for presence(cannot be nil)
+- `validates :email, uniqueness: true`, should be unique
+- `validates :username, uniqueness: { case_sensitive: false }`, case insensitive
+- length validations, `length: {}`
+```ruby
+validates :password, length: { minimum: 8 }
+validates :description, length: { maximum: 500 }
+validates :code, length: { in: 4..10 } # between 4 and 10 characters
+```
+
+- number validations 
+```ruby
+validates :age, numericality: true # Must be a number
+validates :price, numericality: { greater_than: 0 }
+validates :stock, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
+```
+
+- format validations 
+```ruby
+validates :email, format: { with: URI::MailTo::EMAIL_REGEXP }
+validates :username, format: { with: /\A[a-zA-Z0-9_]+\z/, message: "only allows letters, numbers, and underscores" }
+```
+
+- within given set of values 
+```ruby
+validates :status, inclusion: { in: %w[active inactive pending] }
+validates :role, exclusion: { in: %w[admin superuser], message: "is reserved" }
+```
+- in case of checkbox, to validate true/checked/1 value, `validates :terms_of_service, acceptance: true`
+- for confirmation, `validates :password, confirmation: true`
+- allowing nil/blank values
+```ruby
+validates :nickname, uniqueness: true, allow_nil: true
+validates :bio, length: { maximum: 300 }, allow_blank: true
+```
+
+- custom validations (using user defined functions)
+```ruby
+validate :custom_check
+
+def custom_check
+  errors.add(:base, "Something is wrong") if some_condition
+end
+```
+
+<br>
+<br>
+
+### Checking the errors 
+- reload the console using `reload!`
+- `article.errors` for errors 
+- `article.errors.full_messages` for complete messages
+
+```bash
+3.2.0 :001 > article = Article.new
+ => 
+#<Article:0x0000775fd9816608
+... 
+3.2.0 :002 > article.save
+ => false 
+3.2.0 :003 > article.errors
+ => #<ActiveModel::Errors [#<ActiveModel::Error attribute=title, type=blank, options={}>]> 
+3.2.0 :004 > article.errors.full_messages
+ => ["Title can't be blank"] 
+3.2.0 :005 > 
+```
+
+- putting some values and then trying to save
+```bash
+3.2.0 :007 > article = Article.new
+ => 
+#<Article:0x0000775fd798e0f0
+... 
+3.2.0 :008 > article.save
+ => false 
+3.2.0 :009 > article.errors.full_messages
+ => ["Title can't be blank", "Description can't be blank"] 
+3.2.0 :010 > article.title="4th aricle"
+ => "4th aricle" 
+3.2.0 :011 > article.save
+ => false 
+3.2.0 :012 > article.errors.full_messages
+ => ["Description can't be blank"] 
+3.2.0 :013 > article.description="fourth one in yonin in japanese" 
+ => "fourth one in yonin in japanese" 
+3.2.0 :014 > article.save
+  TRANSACTION (0.2ms)  BEGIN /*application='AlphaBlog'*/
+  Article Create (2.4ms)  INSERT INTO "articles" ("created_at", "updated_at", "title", "description") VALUES ('2025-03-30 14:23:20.384130', '2025-03-30 14:23:20.384130', '4th aricle', 'fourth one in yonin in japanese') RETURNING "id" /*application='AlphaBlog'*/
+  TRANSACTION (2.3ms)  COMMIT /*application='AlphaBlog'*/
+ => true 
+3.2.0 :015 >
+```
+
+
+<br>
+<br>
+<br>
+
+- Adding some more values to validate (maintaining some of standard)
+```ruby
+class Article < ApplicationRecord
+  validates :title, presence: true, length: { minimum: 5, maximum: 50 }
+  validates :description, presence: true, length: { minimum: 10, maximum: 200 }
+end
+```
+
+```bash
+3.2.0 :017 > article = Article.new
+ => 
+#<Article:0x0000775fd781e940
+... 
+3.2.0 :018 > article.title
+ => nil 
+3.2.0 :019 > article.title='s'
+ => "s" 
+3.2.0 :020 > article.description="f"
+ => "f" 
+3.2.0 :021 > article.save
+ => false 
+3.2.0 :022 > article.errors.full_messages
+ => 
+["Title is too short (minimum is 5 characters)",
+ "Description is too short (minimum is 10 characters)"] 
+3.2.0 :023 > article.title='This should pass validations'
+ => "This should pass validations" 
+3.2.0 :024 > article.description='New description on more than 10 words '
+ => "New description on more than 10 words " 
+3.2.0 :025 > article.save
+  TRANSACTION (0.2ms)  BEGIN /*application='AlphaBlog'*/
+  Article Create (0.6ms)  INSERT INTO "articles" ("created_at", "updated_at", "title", "description") VALUES ('2025-03-30 14:29:45.078483', '2025-03-30 14:29:45.078483', 'This should pass validations', 'New description on more than 10 words ') RETURNING "id" /*application='AlphaBlog'*/
+  TRANSACTION (4.5ms)  COMMIT /*application='AlphaBlog'*/
+ => true 
+3.2.0 :026 > 
+```
